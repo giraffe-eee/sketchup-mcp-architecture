@@ -1,0 +1,7 @@
+.venv/
+.runtime/
+__pycache__/
+*.pyc
+.bridge-test/
+plugin-backups/
+model/

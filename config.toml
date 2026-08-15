@@ -1,0 +1,16 @@
+[mcp_servers.sketchup_architecture]
+command = ".venv/Scripts/python.exe"
+args = ["mcp-server/sketchup_mcp_server.py"]
+cwd = "."
+startup_timeout_sec = 20
+tool_timeout_sec = 120
+default_tools_approval_mode = "writes"
+enabled = true
+
+[mcp_servers.sketchup_architecture.env]
+SKETCHUP_MCP_HOST = "127.0.0.1"
+SKETCHUP_MCP_PORT = "17654"
+SKETCHUP_MCP_TIMEOUT_SEC = "35"
+SKETCHUP_MCP_ENABLE_FILE_QUEUE = "true"
+SKETCHUP_MCP_RUNTIME_DIR = ".runtime"
+SKETCHUP_MCP_FILE_BRIDGE_DIR = ".runtime/file-queue"

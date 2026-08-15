@@ -1,0 +1,131 @@
+{
+  "protocol_version": "1.0",
+  "actions": {
+    "create_box": {
+      "summary": "Create a rectangular grouped solid.",
+      "required": ["width", "depth", "height"],
+      "common_optional": ["x", "y", "z", "name", "color", "entity_uuid"],
+      "mutating": true
+    },
+    "create_cylinder": {
+      "summary": "Create a circular grouped solid.",
+      "required": ["radius", "height"],
+      "common_optional": ["x", "y", "z", "segments", "name", "color", "entity_uuid"],
+      "mutating": true
+    },
+    "create_wall": {
+      "summary": "Create a wall along a centre, inside, or outside aligned path.",
+      "required": ["start", "end", "thickness", "height"],
+      "common_optional": ["z", "alignment", "openings", "name", "color", "entity_uuid"],
+      "mutating": true
+    },
+    "create_slab": {
+      "summary": "Create a grouped extruded slab from a polygon.",
+      "required": ["points", "thickness"],
+      "common_optional": ["z", "name", "color", "entity_uuid"],
+      "mutating": true
+    },
+    "create_roof": {
+      "summary": "Create a flat roof with an optional parapet from a polygonal footprint.",
+      "required": ["points"],
+      "common_optional": ["z", "thickness", "parapet_height", "parapet_thickness", "name", "color", "entity_uuid"],
+      "mutating": true
+    },
+    "create_stair": {
+      "summary": "Create a straight stair group.",
+      "required": ["width", "run", "rise", "steps"],
+      "common_optional": ["x", "y", "z", "direction", "name", "color", "entity_uuid"],
+      "mutating": true
+    },
+    "create_railing": {
+      "summary": "Create a railing with posts and a top rail.",
+      "required": ["start", "end", "height"],
+      "common_optional": ["z", "post_size", "spacing", "name", "color", "entity_uuid"],
+      "mutating": true
+    },
+    "create_window": {
+      "summary": "Add a window opening to a Codex wall and preserve its semantic identity.",
+      "required": ["entity_id", "opening"],
+      "common_optional": ["name"],
+      "selector_any_of": ["entity_id", "name"],
+      "aliases": {"wall_id": "entity_id", "id": "entity_id", "sill_height": "opening.sill"},
+      "mutating": true
+    },
+    "create_door": {
+      "summary": "Add a door opening to a Codex wall and preserve its semantic identity.",
+      "required": ["entity_id", "opening"],
+      "common_optional": ["name"],
+      "selector_any_of": ["entity_id", "name"],
+      "aliases": {"wall_id": "entity_id", "id": "entity_id"},
+      "mutating": true
+    },
+    "create_glazing": {
+      "summary": "Add transparent glazing and a frame to selected wall openings.",
+      "required": ["entity_id"],
+      "common_optional": ["opening_index", "include_doors", "thickness", "frame_width", "frame_depth", "color", "opacity", "frame_color", "name"],
+      "selector_any_of": ["entity_id", "name"],
+      "aliases": {"wall_id": "entity_id", "id": "entity_id", "glass_color": "color", "glass_opacity": "opacity"},
+      "mutating": true
+    },
+    "repair_wall_joints": {
+      "summary": "Repair joints between compatible Codex walls.",
+      "required": [],
+      "common_optional": ["tolerance", "names", "entity_uuids"],
+      "mutating": true
+    },
+    "rebuild_walls": {
+      "summary": "Rebuild selected Codex walls while preserving semantic wall UUIDs.",
+      "required": [],
+      "common_optional": ["names", "entity_uuids"],
+      "mutating": true
+    },
+    "set_material": {
+      "summary": "Apply a hexadecimal color and optional opacity to an entity.",
+      "required": ["entity_id", "color"],
+      "common_optional": ["opacity", "name"],
+      "selector_any_of": ["entity_id", "name"],
+      "aliases": {"id": "entity_id"},
+      "mutating": true
+    },
+    "move_entity": {
+      "summary": "Translate an entity in millimetres.",
+      "required": ["entity_id"],
+      "common_optional": ["dx", "dy", "dz", "name"],
+      "selector_any_of": ["entity_id", "name"],
+      "aliases": {"id": "entity_id", "x": "dx", "y": "dy", "z": "dz"},
+      "mutating": true
+    },
+    "delete_entity": {
+      "summary": "Permanently delete one selected top-level group.",
+      "required": ["entity_id"],
+      "common_optional": ["name"],
+      "selector_any_of": ["entity_id", "name"],
+      "aliases": {"id": "entity_id"},
+      "mutating": true
+    },
+    "apply_batch": {
+      "summary": "Apply a sequence of mutating actions as one SketchUp operation; any failure rolls back the whole batch.",
+      "required": ["commands"],
+      "common_optional": ["name"],
+      "mutating": true
+    },
+    "list_entities": {
+      "summary": "List top-level groups and identify bridge-managed entities.",
+      "required": [],
+      "common_optional": [],
+      "mutating": false
+    },
+    "quality_check": {
+      "summary": "Run bridge model quality checks without editing the model.",
+      "required": [],
+      "common_optional": [],
+      "mutating": false
+    },
+    "bridge_info": {
+      "summary": "Return bridge, protocol, and action-catalog information.",
+      "required": [],
+      "common_optional": [],
+      "mutating": false
+    }
+  }
+}
