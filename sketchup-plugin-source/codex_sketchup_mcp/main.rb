@@ -8,7 +8,10 @@ require 'time'
 require File.join(File.dirname(__FILE__), 'version')
 
 module CodexSketchupMcpBootstrap
-  DEFAULT_RUNTIME_DIR = 'D:/project/sketchup-mcp-architecture/.runtime'.freeze
+  DEFAULT_RUNTIME_DIR = begin
+    local_app_data = ENV.fetch('LOCALAPPDATA', '').strip
+    local_app_data.empty? ? File.join(Dir.home, '.codex-sketchup-mcp') : File.join(local_app_data, 'CodexSketchupMcp')
+  end.freeze
   LOG_DIR = File.expand_path(
     ENV.fetch('SKETCHUP_MCP_RUNTIME_DIR', DEFAULT_RUNTIME_DIR)
   ).freeze

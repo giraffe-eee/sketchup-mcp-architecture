@@ -14,7 +14,7 @@ PowerShell 脚本不可用时，也可按手动步骤安装。
 Codex
   | STDIO MCP
 Python MCP 服务 (mcp-server/sketchup_mcp_server.py)
-  | 本地 JSONL 文件队列 (.runtime/file-queue)
+  | 本地 JSONL 文件队列 (%LOCALAPPDATA%/CodexSketchupMcp/file-queue)
 SketchUp Ruby 扩展
   | SketchUp Ruby API
 当前 .skp 模型
@@ -23,6 +23,15 @@ SketchUp Ruby 扩展
 Ruby 扩展在 SketchUp 内实际执行建模。Python 不是 SketchUp 插件，而是供 Codex
 启动和调用的 MCP 适配器。本地文件队列让嵌入式 SketchUp Ruby 无法稳定提供 HTTP
 服务时仍能可靠通信。
+
+## 推荐环境
+
+- Windows 10/11
+- SketchUp 2026（已验证）
+- Python 3.12（推荐；Python 3.10 或更高版本为最低要求）
+
+文件队列位于当前用户的
+`%LOCALAPPDATA%\CodexSketchupMcp\file-queue`，不依赖仓库所在目录。
 
 ## 核心文件
 
@@ -59,6 +68,7 @@ Ruby 扩展在 SketchUp 内实际执行建模。Python 不是 SketchUp 插件，
    `.codex/config.toml` 启动 `sketchup_architecture` MCP 服务。
 5. 调用 `bridge_info`。正常桥接会报告协议版本 `1.0`，支持动作中包含
    `apply_batch`。
+6. 也可运行 `.\scripts\check-bridge.ps1`，检查插件、文件队列与协议是否正常连接。
 
 ## 手动安装
 
@@ -88,7 +98,7 @@ Ruby 扩展在 SketchUp 内实际执行建模。Python 不是 SketchUp 插件，
 
 ### 2. 创建 Python MCP 环境
 
-安装 Python 3.10 或更高版本。在项目根目录运行自动安装命令，或手动运行：
+推荐安装 Python 3.12；Python 3.10 或更高版本也可使用。在项目根目录运行自动安装命令，或手动运行：
 
 ```powershell
 python -m venv .venv
@@ -123,8 +133,6 @@ SKETCHUP_MCP_HOST = "127.0.0.1"
 SKETCHUP_MCP_PORT = "17654"
 SKETCHUP_MCP_TIMEOUT_SEC = "35"
 SKETCHUP_MCP_ENABLE_FILE_QUEUE = "true"
-SKETCHUP_MCP_RUNTIME_DIR = "C:/path/to/sketchup-mcp-architecture/.runtime"
-SKETCHUP_MCP_FILE_BRIDGE_DIR = "C:/path/to/sketchup-mcp-architecture/.runtime/file-queue"
 ```
 
 修改后重启 Codex 工作区，使 MCP 服务使用新配置重新启动。
@@ -155,11 +163,11 @@ SKETCHUP_MCP_FILE_BRIDGE_DIR = "C:/path/to/sketchup-mcp-architecture/.runtime/fi
 
 | 现象 | 检查方式 |
 | --- | --- |
-| `bridge_info` 超时 | 确认 SketchUp 正在运行，复制 Ruby 文件后已重启，并确认扩展已启用。 |
+| `bridge_info` 超时 | 运行 `.\scripts\check-bridge.ps1`；确认 SketchUp 正在运行，复制 Ruby 文件后已重启，并确认扩展已启用。 |
 | Codex 无法启动 MCP 服务 | 运行 Python 安装命令，检查 `.codex/config.toml` 的 `command`、`cwd` 和运行目录路径。 |
 | 安装脚本拒绝运行 | 完全关闭 SketchUp；安装脚本不会替换正在使用的插件文件。 |
 | SketchUp 未显示插件 | 重新检查两处复制目标，确认复制的是完整的 `codex_sketchup_mcp` 文件夹。 |
 | 现有模型意外变化 | 立即停止，调用 `list_entities`，仅在用户明确批准替换后继续。 |
 
-`.venv`、`.runtime` 和安装脚本备份文件夹均为本机生成文件，已被 Git 忽略，
+`.venv` 和安装脚本备份文件夹均为本机生成文件，已被 Git 忽略，
 可按本说明重新生成。

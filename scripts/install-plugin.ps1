@@ -178,7 +178,7 @@ if ($pluginExists -and $Update) {
 
             Write-Host "Backed up the previous plugin to $backupDestination"
             Write-Host "Updated plugin files in $resolvedPluginsRoot"
-            Write-Host 'Restart SketchUp, then use check-bridge.ps1 to verify the localhost bridge.'
+            Write-Host 'Restart SketchUp, then run .\scripts\check-bridge.ps1 to verify the bridge.'
         } catch {
             $originalError = $_.Exception.Message
             $rollbackErrors = [System.Collections.Generic.List[string]]::new()
@@ -229,7 +229,7 @@ if ($PSCmdlet.ShouldProcess($resolvedPluginsRoot, 'Install Codex SketchUp MCP pl
         Remove-PluginItem -TargetPath $stagePayload.Root -Directory
 
         Write-Host "Installed plugin files in $resolvedPluginsRoot"
-        Write-Host 'Restart SketchUp, then use check-bridge.ps1 to verify the localhost bridge.'
+        Write-Host 'Restart SketchUp, then run .\scripts\check-bridge.ps1 to verify the bridge.'
     } catch {
         $originalError = $_.Exception.Message
         $cleanupErrors = [System.Collections.Generic.List[string]]::new()

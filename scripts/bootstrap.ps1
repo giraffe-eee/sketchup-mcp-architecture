@@ -17,10 +17,15 @@ $projectRoot = Split-Path -Parent $PSScriptRoot
 $venvPython = Join-Path $projectRoot '.venv\Scripts\python.exe'
 
 if (-not (Test-Path -LiteralPath $venvPython -PathType Leaf)) {
-    $pythonCommand = Get-Command python -ErrorAction SilentlyContinue | Select-Object -First 1
-    if ($pythonCommand) {
-        $python = $pythonCommand.Source
-    } else {
+    $python = $null
+    foreach ($pythonCommand in (Get-Command python, py -ErrorAction SilentlyContinue)) {
+        & $pythonCommand.Source --version *> $null
+        if ($LASTEXITCODE -eq 0) {
+            $python = $pythonCommand.Source
+            break
+        }
+    }
+    if ([string]::IsNullOrWhiteSpace($python)) {
         $python = Get-ChildItem -Path (Join-Path $env:LOCALAPPDATA 'Programs\Python') -Filter python.exe -Recurse -ErrorAction SilentlyContinue |
             Select-Object -ExpandProperty FullName -First 1
     }

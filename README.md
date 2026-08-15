@@ -13,6 +13,15 @@ Codex -> Python MCP 服务 -> 本地文件队列 -> SketchUp Ruby 插件 -> .skp
 Ruby 插件负责在 SketchUp 内实际建模；Python 只负责把 Codex 的 MCP 请求
 可靠地转交给该插件。两者都在本机运行，不会把模型发送到外部服务。
 
+## 推荐环境
+
+- SketchUp 2026（已验证）
+- Python 3.12（推荐；Python 3.10 或更高版本为最低要求）
+- Windows 10/11
+
+桥接文件队列存放在当前用户的
+`%LOCALAPPDATA%\CodexSketchupMcp\file-queue`，与项目克隆路径无关。
+
 ## 安装与使用
 
 完整的自动安装、手动文件复制、Python 环境配置、Codex 配置修改、验证方法和
@@ -26,4 +35,8 @@ Ruby 插件负责在 SketchUp 内实际建模；Python 只负责把 Codex 的 MC
 .\scripts\install-plugin.ps1
 ```
 
-然后重启 SketchUp，在 Codex 中打开本项目，并调用 `bridge_info` 验证连接。
+然后重启 SketchUp，在 Codex 中打开本项目，并运行：
+
+```powershell
+.\scripts\check-bridge.ps1
+```
