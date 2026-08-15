@@ -1,84 +1,78 @@
 # SketchUp Architecture MCP
 
-This is the complete installation and operation guide. A Codex agent can read
-this file and perform the setup; a person can also follow the manual steps
-when PowerShell scripts are unavailable.
+这是本项目的完整安装和操作说明。Codex 可以直接读取本文件完成配置；当
+PowerShell 脚本不可用时，也可按手动步骤安装。
 
-## What this project does
+## 项目用途
 
-It lets Codex create and revise SketchUp architecture models through a local
-MCP bridge. All dimensions are millimetres. The bridge is local-only and
-accepts a fixed catalog of modelling actions instead of arbitrary Ruby code.
+本项目让 Codex 通过本地 MCP 桥接服务创建和修改 SketchUp 建筑模型。所有尺寸
+使用毫米。桥接服务只在本机运行，只接受预定义的建模动作，不执行任意 Ruby 代码。
 
-## Architecture
+## 工作原理
 
 ```text
 Codex
   | STDIO MCP
-Python MCP server (mcp-server/sketchup_mcp_server.py)
-  | local JSONL file queue (.runtime/file-queue)
-SketchUp Ruby extension
+Python MCP 服务 (mcp-server/sketchup_mcp_server.py)
+  | 本地 JSONL 文件队列 (.runtime/file-queue)
+SketchUp Ruby 扩展
   | SketchUp Ruby API
-Current .skp model
+当前 .skp 模型
 ```
 
-The Ruby extension performs the actual modelling inside SketchUp. Python is
-not a SketchUp plugin: it is the small MCP adapter that Codex can start and
-call. The local file queue makes the connection reliable even when embedded
-SketchUp Ruby threads cannot run a normal HTTP server consistently.
+Ruby 扩展在 SketchUp 内实际执行建模。Python 不是 SketchUp 插件，而是供 Codex
+启动和调用的 MCP 适配器。本地文件队列让嵌入式 SketchUp Ruby 无法稳定提供 HTTP
+服务时仍能可靠通信。
 
-## Files that matter
+## 核心文件
 
-| Path | Purpose |
+| 路径 | 用途 |
 | --- | --- |
-| `sketchup-plugin-source/sketchup_mcp_port_bridge.rb` | SketchUp extension loader. |
-| `sketchup-plugin-source/codex_sketchup_mcp/` | Ruby implementation, version, and action catalog. |
-| `mcp-server/sketchup_mcp_server.py` | Codex-facing MCP server. |
-| `mcp-server/requirements.txt` | Python dependency list. |
-| `.codex/config.toml` | Project-scoped MCP registration for Codex. |
-| `scripts/bootstrap.ps1` | Optional Python environment setup. |
-| `scripts/install-plugin.ps1` | Optional guarded SketchUp plugin installation/update. |
+| `sketchup-plugin-source/sketchup_mcp_port_bridge.rb` | SketchUp 扩展加载器。 |
+| `sketchup-plugin-source/codex_sketchup_mcp/` | Ruby 实现、版本和动作目录。 |
+| `mcp-server/sketchup_mcp_server.py` | 面向 Codex 的 MCP 服务。 |
+| `mcp-server/requirements.txt` | Python 依赖。 |
+| `.codex/config.toml` | 本项目的 Codex MCP 注册配置。 |
+| `scripts/bootstrap.ps1` | 可选的 Python 环境安装脚本。 |
+| `scripts/install-plugin.ps1` | 可选的 SketchUp 插件安装/更新脚本。 |
 
-Do not use or inspect any unrelated or corrupted `project-source` directory.
+不要使用或查看任何无关或损坏的 `project-source` 目录。
 
-## Automatic installation
+## 自动安装
 
-1. Close SketchUp. Save any open model first.
-2. Open this repository as a trusted Codex workspace.
-3. Run:
+1. 关闭 SketchUp，并保存已打开的模型。
+2. 在 Codex 中将本仓库作为受信任工作区打开。
+3. 运行：
 
    ```powershell
    .\scripts\bootstrap.ps1
    .\scripts\install-plugin.ps1
    ```
 
-   Use `-Update` on the second command if a previous Codex SketchUp MCP plugin
-   is already installed:
+   如果已经安装过插件，请使用：
 
    ```powershell
    .\scripts\install-plugin.ps1 -Update
    ```
 
-4. Start SketchUp again and open this repository in Codex. Codex starts the
-   `sketchup_architecture` MCP server from `.codex/config.toml`.
-5. Call `bridge_info`. A healthy bridge reports protocol version `1.0` and
-   includes `apply_batch` in its supported actions.
+4. 重启 SketchUp，并在 Codex 中打开本仓库。Codex 会根据
+   `.codex/config.toml` 启动 `sketchup_architecture` MCP 服务。
+5. 调用 `bridge_info`。正常桥接会报告协议版本 `1.0`，支持动作中包含
+   `apply_batch`。
 
-## Manual installation
+## 手动安装
 
-Use these steps if either PowerShell script fails, or if you prefer to see
-every file placement explicitly.
+当 PowerShell 脚本失败，或需要明确检查每个文件的放置位置时，使用以下步骤。
 
-### 1. Install the SketchUp extension files
+### 1. 安装 SketchUp 扩展文件
 
-Close SketchUp. Locate its Plugins directory. For the default SketchUp 2026
-Windows installation it is:
+关闭 SketchUp，找到其 Plugins 目录。SketchUp 2026 在 Windows 的默认路径为：
 
 ```text
 %APPDATA%\SketchUp\SketchUp 2026\SketchUp\Plugins
 ```
 
-Copy these items exactly:
+严格按以下对应关系复制：
 
 ```text
 <project>\sketchup-plugin-source\sketchup_mcp_port_bridge.rb
@@ -88,17 +82,13 @@ Copy these items exactly:
     -> <Plugins>\codex_sketchup_mcp\
 ```
 
-The final Plugins directory must contain both the `.rb` loader and the entire
-`codex_sketchup_mcp` folder. Do not put the folder inside another folder and do
-not rename it.
+最终 Plugins 目录必须同时包含 `.rb` 加载器和完整的 `codex_sketchup_mcp` 文件夹。
+不要将该文件夹嵌套一层或重命名。启动 SketchUp 后，如被询问是否加载扩展，请允许；
+再在“扩展程序”中确认 Codex SketchUp MCP 已启用。
 
-Start SketchUp. If SketchUp asks whether to load the extension, allow it.
-Verify under `Extensions` that the Codex SketchUp MCP extension is enabled.
+### 2. 创建 Python MCP 环境
 
-### 2. Create the Python MCP environment
-
-Install Python 3.10 or later. From the project root, run either the automatic
-bootstrap command above or the following commands manually:
+安装 Python 3.10 或更高版本。在项目根目录运行自动安装命令，或手动运行：
 
 ```powershell
 python -m venv .venv
@@ -106,20 +96,17 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r .\mcp-server\requirements.txt
 ```
 
-If `python` is not on `PATH`, replace it with the full path to `python.exe`.
-For example, a typical per-user installation is:
+若 `python` 未加入 `PATH`，请替换为 `python.exe` 完整路径，例如：
 
 ```text
 C:\Users\<username>\AppData\Local\Programs\Python\Python3xx\python.exe
 ```
 
-### 3. Configure Codex manually
+### 3. 手动配置 Codex
 
-Open `<project>/.codex/config.toml`. Its relative paths work when Codex opens
-this repository as the workspace. If a Codex installation requires absolute
-paths, replace the whole `sketchup_architecture` block with the following,
-substituting `C:/path/to/sketchup-mcp-architecture` for the actual project
-path. Use forward slashes in TOML paths.
+打开 `<project>/.codex/config.toml`。Codex 将本仓库作为工作区打开时可直接使用
+相对路径。若需要绝对路径，请替换完整 `sketchup_architecture` 配置块，并将
+`C:/path/to/sketchup-mcp-architecture` 换成实际项目路径。TOML 中使用正斜杠：
 
 ```toml
 [mcp_servers.sketchup_architecture]
@@ -140,42 +127,39 @@ SKETCHUP_MCP_RUNTIME_DIR = "C:/path/to/sketchup-mcp-architecture/.runtime"
 SKETCHUP_MCP_FILE_BRIDGE_DIR = "C:/path/to/sketchup-mcp-architecture/.runtime/file-queue"
 ```
 
-Restart the Codex workspace after changing this file so it restarts the MCP
-server with the new configuration.
+修改后重启 Codex 工作区，使 MCP 服务使用新配置重新启动。
 
-## Normal modelling workflow
+## 常规建模流程
 
-1. Confirm the bridge with `bridge_info`.
-2. Call `list_entities` and `quality_check` before editing.
-3. Never delete or overwrite an existing model without explicit user approval.
-4. Create related model elements in atomic `apply_batch` requests of 4-8
-   commands. Run `quality_check` after each structural phase.
-5. Use `create_glazing` with `include_doors: false` for a wall that has a solid
-   entry door.
-6. After a visually important build, inspect facade and bird's-eye views.
-   A structural quality check cannot judge visual proportion or incomplete
-   decorative elements.
+1. 先调用 `bridge_info` 确认桥接连接。
+2. 编辑前调用 `list_entities` 和 `quality_check`。
+3. 未得到用户明确许可时，禁止删除或覆盖已有模型。
+4. 将相关元素拆分为原子性的 `apply_batch` 请求，每批 4-8 条命令；每个结构阶段后
+   运行 `quality_check`。
+5. 墙体带有实体入户门时，调用 `create_glazing` 时使用 `include_doors: false`。
+6. 完成视觉上重要的建模后，检查立面和鸟瞰视图；结构质量检查无法判断比例是否协调
+   或装饰元素是否缺失。
 
-## Supported actions
+## 支持的动作
 
-`create_box`, `create_cylinder`, `create_door`, `create_glazing`,
-`create_railing`, `create_roof`, `create_slab`, `create_stair`,
-`create_wall`, `create_window`, `delete_entity`, `list_entities`,
-`move_entity`, `quality_check`, `rebuild_walls`, `repair_wall_joints`, and
-`set_material`.
+`create_box`、`create_cylinder`、`create_door`、`create_glazing`、
+`create_railing`、`create_roof`、`create_slab`、`create_stair`、
+`create_wall`、`create_window`、`delete_entity`、`list_entities`、
+`move_entity`、`quality_check`、`rebuild_walls`、`repair_wall_joints`、
+`set_material`。
 
-The authoritative parameter schema is
-`sketchup-plugin-source/codex_sketchup_mcp/action_catalog.json`.
+权威参数定义位于
+`sketchup-plugin-source/codex_sketchup_mcp/action_catalog.json`。
 
-## Troubleshooting
+## 故障排查
 
-| Symptom | Check |
+| 现象 | 检查方式 |
 | --- | --- |
-| `bridge_info` times out | Ensure SketchUp is running, restart it after copying the Ruby files, and confirm the extension is enabled. |
-| Codex cannot start the MCP server | Run the Python setup commands, then verify `command`, `cwd`, and runtime paths in `.codex/config.toml`. |
-| Installer refuses to run | Close SketchUp completely; the installer will not replace active plugin files. |
-| Plugin does not appear in SketchUp | Recheck both manual copy targets and make sure the `codex_sketchup_mcp` folder was copied as a folder, not as nested contents. |
-| Existing model changes unexpectedly | Stop immediately, use `list_entities`, and only continue after the user explicitly approves the intended replacement. |
+| `bridge_info` 超时 | 确认 SketchUp 正在运行，复制 Ruby 文件后已重启，并确认扩展已启用。 |
+| Codex 无法启动 MCP 服务 | 运行 Python 安装命令，检查 `.codex/config.toml` 的 `command`、`cwd` 和运行目录路径。 |
+| 安装脚本拒绝运行 | 完全关闭 SketchUp；安装脚本不会替换正在使用的插件文件。 |
+| SketchUp 未显示插件 | 重新检查两处复制目标，确认复制的是完整的 `codex_sketchup_mcp` 文件夹。 |
+| 现有模型意外变化 | 立即停止，调用 `list_entities`，仅在用户明确批准替换后继续。 |
 
-`.venv`, `.runtime`, and installer backup folders are local generated files.
-They are excluded from Git and can be regenerated from this guide.
+`.venv`、`.runtime` 和安装脚本备份文件夹均为本机生成文件，已被 Git 忽略，
+可按本说明重新生成。
