@@ -66,6 +66,8 @@ function Test-PluginPayload {
         (Join-Path $ExtensionPath 'main.rb'),
         (Join-Path $ExtensionPath 'version.rb'),
         (Join-Path $ExtensionPath 'core.rb'),
+        (Join-Path $ExtensionPath 'runtime_config.rb'),
+        (Join-Path $ExtensionPath 'runtime_config.json'),
         (Join-Path $ExtensionPath 'action_catalog.json')
     )
     foreach ($requiredFile in $requiredFiles) {
@@ -74,6 +76,18 @@ function Test-PluginPayload {
         }
     }
     return $true
+}
+
+function Write-RuntimeConfig {
+    param([Parameter(Mandatory = $true)][string]$ExtensionPath)
+
+    $runtimeDirectory = Join-Path $resolvedProjectRoot '.runtime'
+    $config = [ordered]@{
+        runtime_dir = $runtimeDirectory
+        file_bridge_dir = (Join-Path $runtimeDirectory 'file-queue')
+    } | ConvertTo-Json -Compress
+    $configPath = Join-Path $ExtensionPath 'runtime_config.json'
+    [System.IO.File]::WriteAllText($configPath, $config, [System.Text.UTF8Encoding]::new($false))
 }
 
 function New-StagedPluginPayload {
@@ -89,6 +103,7 @@ function New-StagedPluginPayload {
     $stageLoader = Join-Path $resolvedStageRoot 'sketchup_mcp_port_bridge.rb'
     Copy-Item -LiteralPath $sourceExtension -Destination $stageExtension -Recurse | Out-Null
     Copy-Item -LiteralPath $sourceLoader -Destination $stageLoader | Out-Null
+    Write-RuntimeConfig -ExtensionPath $stageExtension
     if (-not (Test-PluginPayload -ExtensionPath $stageExtension -LoaderPath $stageLoader)) {
         throw "Staged plugin payload is incomplete: $resolvedStageRoot"
     }

@@ -8,6 +8,7 @@ require 'fileutils'
 require 'securerandom'
 require 'sketchup'
 require File.join(File.dirname(__FILE__), 'version')
+require File.join(File.dirname(__FILE__), 'runtime_config')
 
 module CodexSketchupMcpPortBridge
   extend self
@@ -23,15 +24,14 @@ module CodexSketchupMcpPortBridge
   COMPLETED_REQUEST_CACHE_SIZE = 256
   FILE_RESPONSE_CACHE_SIZE = 5_000
   FILE_QUEUE_DEFAULT_ENABLED = true
-  DEFAULT_RUNTIME_DIR = begin
-    local_app_data = ENV.fetch('LOCALAPPDATA', '').strip
-    local_app_data.empty? ? File.join(Dir.home, '.codex-sketchup-mcp') : File.join(local_app_data, 'CodexSketchupMcp')
-  end.freeze
+  DEFAULT_RUNTIME_DIR = CodexSketchupMcpRuntime.runtime_dir.freeze
   RUNTIME_DIR = File.expand_path(
     ENV.fetch('SKETCHUP_MCP_RUNTIME_DIR', DEFAULT_RUNTIME_DIR)
   ).freeze
   LOG_FILE = File.join(RUNTIME_DIR, 'bridge.log').freeze
-  FILE_BRIDGE_DIR = File.expand_path(ENV.fetch('SKETCHUP_MCP_FILE_BRIDGE_DIR', File.join(RUNTIME_DIR, 'file-queue'))).freeze
+  FILE_BRIDGE_DIR = File.expand_path(
+    ENV.fetch('SKETCHUP_MCP_FILE_BRIDGE_DIR', CodexSketchupMcpRuntime.file_bridge_dir(RUNTIME_DIR))
+  ).freeze
   COMMANDS_FILE = File.join(FILE_BRIDGE_DIR, 'commands.jsonl')
   RESPONSES_FILE = File.join(FILE_BRIDGE_DIR, 'responses.jsonl')
   ACTION_CATALOG_PATH = File.join(File.dirname(__FILE__), 'action_catalog.json').freeze

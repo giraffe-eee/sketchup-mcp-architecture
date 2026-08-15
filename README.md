@@ -19,8 +19,8 @@ Ruby 插件负责在 SketchUp 内实际建模；Python 只负责把 Codex 的 MC
 - Python 3.12（推荐；Python 3.10 或更高版本为最低要求）
 - Windows 10/11
 
-桥接文件队列存放在当前用户的
-`%LOCALAPPDATA%\CodexSketchupMcp\file-queue`，与项目克隆路径无关。
+桥接文件队列存放在项目目录的 `.runtime\file-queue`。安装脚本会把当前用户的
+实际项目路径写入 SketchUp 插件，因此项目可以克隆到任意目录。
 
 ## 安装与使用
 

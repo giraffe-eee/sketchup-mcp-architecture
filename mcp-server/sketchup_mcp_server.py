@@ -36,17 +36,7 @@ DEFAULT_MIN_STAGE_DURATION_MS: Final = 120
 MAX_MIN_STAGE_DURATION_MS: Final = 2_000
 REQUEST_ID_PATTERN: Final = re.compile(r"^[A-Za-z0-9._:-]{1,128}$")
 PROJECT_ROOT: Final = Path(__file__).resolve().parents[1]
-
-
-def default_runtime_dir() -> Path:
-    """Return the user-local directory shared with the SketchUp extension."""
-    local_app_data = os.environ.get("LOCALAPPDATA", "").strip()
-    if local_app_data:
-        return Path(local_app_data) / "CodexSketchupMcp"
-    return Path.home() / ".codex-sketchup-mcp"
-
-
-DEFAULT_FILE_BRIDGE_DIR: Final = default_runtime_dir() / "file-queue"
+DEFAULT_FILE_BRIDGE_DIR: Final = PROJECT_ROOT / ".runtime" / "file-queue"
 ACTION_CATALOG_PATH: Final = (
     PROJECT_ROOT / "sketchup-plugin-source" / "codex_sketchup_mcp" / "action_catalog.json"
 )

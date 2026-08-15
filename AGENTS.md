@@ -14,7 +14,7 @@ PowerShell 脚本不可用时，也可按手动步骤安装。
 Codex
   | STDIO MCP
 Python MCP 服务 (mcp-server/sketchup_mcp_server.py)
-  | 本地 JSONL 文件队列 (%LOCALAPPDATA%/CodexSketchupMcp/file-queue)
+  | 本地 JSONL 文件队列 (<project>/.runtime/file-queue)
 SketchUp Ruby 扩展
   | SketchUp Ruby API
 当前 .skp 模型
@@ -30,8 +30,8 @@ Ruby 扩展在 SketchUp 内实际执行建模。Python 不是 SketchUp 插件，
 - SketchUp 2026（已验证）
 - Python 3.12（推荐；Python 3.10 或更高版本为最低要求）
 
-文件队列位于当前用户的
-`%LOCALAPPDATA%\CodexSketchupMcp\file-queue`，不依赖仓库所在目录。
+文件队列位于项目目录的 `.runtime\file-queue`。安装脚本会把当前用户的
+实际项目路径写入 SketchUp 插件，因此项目可位于任意目录。
 
 ## 核心文件
 
@@ -90,6 +90,16 @@ Ruby 扩展在 SketchUp 内实际执行建模。Python 不是 SketchUp 插件，
 
 <project>\sketchup-plugin-source\codex_sketchup_mcp\
     -> <Plugins>\codex_sketchup_mcp\
+```
+
+在 `<Plugins>\codex_sketchup_mcp\runtime_config.json` 创建以下内容，并将
+`C:/path/to/sketchup-mcp-architecture` 替换为项目实际路径：
+
+```json
+{
+  "runtime_dir": "C:/path/to/sketchup-mcp-architecture/.runtime",
+  "file_bridge_dir": "C:/path/to/sketchup-mcp-architecture/.runtime/file-queue"
+}
 ```
 
 最终 Plugins 目录必须同时包含 `.rb` 加载器和完整的 `codex_sketchup_mcp` 文件夹。
@@ -169,5 +179,5 @@ SKETCHUP_MCP_ENABLE_FILE_QUEUE = "true"
 | SketchUp 未显示插件 | 重新检查两处复制目标，确认复制的是完整的 `codex_sketchup_mcp` 文件夹。 |
 | 现有模型意外变化 | 立即停止，调用 `list_entities`，仅在用户明确批准替换后继续。 |
 
-`.venv` 和安装脚本备份文件夹均为本机生成文件，已被 Git 忽略，
+`.venv`、`.runtime` 和安装脚本备份文件夹均为本机生成文件，已被 Git 忽略，
 可按本说明重新生成。
