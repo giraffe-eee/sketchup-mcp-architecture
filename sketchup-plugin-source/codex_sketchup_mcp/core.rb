@@ -1328,6 +1328,74 @@ module CodexSketchupMcpPortBridge
     face.pushpull(height)
   end
 
+  def world_bounds_mm(group)
+    bounds = group.bounds
+    {
+      min_x: bounds.min.x.to_mm,
+      max_x: bounds.max.x.to_mm,
+      min_y: bounds.min.y.to_mm,
+      max_y: bounds.max.y.to_mm,
+      min_z: bounds.min.z.to_mm,
+      max_z: bounds.max.z.to_mm
+    }
+  end
+
+  def bounds_overlap_xy?(first, second, tolerance_mm = 5.0)
+    first.fetch(:min_x) < second.fetch(:max_x) - tolerance_mm &&
+      first.fetch(:max_x) > second.fetch(:min_x) + tolerance_mm &&
+      first.fetch(:min_y) < second.fetch(:max_y) - tolerance_mm &&
+      first.fetch(:max_y) > second.fetch(:min_y) + tolerance_mm
+  end
+
+  # SketchUp accepts disconnected groups, so check that elevated walls have a
+  # slab or foundation beneath them before reporting model quality as healthy.
+  def unsupported_elevated_walls(walls, slabs, tolerance_mm = 5.0)
+    slab_bounds = slabs.map { |group| [group, world_bounds_mm(group)] }
+    walls.filter_map do |group, _spec|
+      wall_bounds = world_bounds_mm(group)
+      next if wall_bounds.fetch(:min_z) <= tolerance_mm
+
+      supported = slab_bounds.any? do |_slab, bounds|
+        (bounds.fetch(:max_z) - wall_bounds.fetch(:min_z)).abs <= tolerance_mm &&
+          bounds_overlap_xy?(bounds, wall_bounds, tolerance_mm)
+      end
+      next if supported
+
+      {
+        entity_id: entity_identifier_for(group),
+        name: group.name,
+        base_z_mm: wall_bounds.fetch(:min_z).round(1),
+        message: 'No slab or foundation reaches this elevated wall base'
+      }
+    end
+  end
+
+  # Only named site slabs participate in this check so valid interior or
+  # basement stairs are not mistaken for a grading issue.
+  def below_grade_stairs(groups, tolerance_mm = 5.0)
+    site_slabs = groups.select do |group|
+      group.get_attribute(CodexSketchupMcp::ATTRIBUTE_DICTIONARY, 'kind') == 'slab' &&
+        group.name.match?(/(?:ground|lawn|site|terrain|grass)/i)
+    end
+    return [] if site_slabs.empty?
+
+    site_top = site_slabs.map { |group| world_bounds_mm(group).fetch(:max_z) }.max
+    groups.filter_map do |group|
+      next unless group.get_attribute(CodexSketchupMcp::ATTRIBUTE_DICTIONARY, 'kind') == 'stair'
+
+      stair_bounds = world_bounds_mm(group)
+      next unless stair_bounds.fetch(:min_z) < site_top - tolerance_mm
+
+      {
+        entity_id: entity_identifier_for(group),
+        name: group.name,
+        lowest_z_mm: stair_bounds.fetch(:min_z).round(1),
+        site_top_z_mm: site_top.round(1),
+        message: 'Stair begins below the named site-ground surface'
+      }
+    end
+  end
+
   def quality_check(_params = {})
     groups = Sketchup.active_model.entities.grep(Sketchup::Group)
     tiny = groups.select do |group|
@@ -1366,7 +1434,12 @@ module CodexSketchupMcpPortBridge
       end.reject(&:empty?)
       !links.empty? && links.any? { |uuid| !wall_uuids.include?(uuid) }
     end
-    issue_count = tiny.length + unnamed.length + malformed_walls.length + unmigrated_walls.length + orphan_glazing.length + orphan_joints.length
+    slabs = groups.select do |group|
+      group.get_attribute(CodexSketchupMcp::ATTRIBUTE_DICTIONARY, 'kind') == 'slab'
+    end
+    unsupported_walls = unsupported_elevated_walls(walls, slabs)
+    buried_stairs = below_grade_stairs(groups)
+    issue_count = tiny.length + unnamed.length + malformed_walls.length + unmigrated_walls.length + orphan_glazing.length + orphan_joints.length + unsupported_walls.length + buried_stairs.length
     {
       status: issue_count.zero? ? 'ok' : 'warning',
       group_count: groups.length,
@@ -1377,7 +1450,9 @@ module CodexSketchupMcpPortBridge
       malformed_walls: malformed_walls,
       unmigrated_walls: unmigrated_walls,
       orphan_glazing_ids: orphan_glazing.map { |group| entity_identifier_for(group) },
-      orphan_joint_ids: orphan_joints.map { |group| entity_identifier_for(group) }
+      orphan_joint_ids: orphan_joints.map { |group| entity_identifier_for(group) },
+      unsupported_elevated_walls: unsupported_walls,
+      below_grade_stairs: buried_stairs
     }
   end
 
