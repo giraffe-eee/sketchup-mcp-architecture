@@ -1,6 +1,6 @@
 [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
 param(
-    [string]$SketchUpVersion = '2026',
+    [string]$SketchUpVersion,
     [string]$PluginsRoot,
     [switch]$Update,
     [string]$BackupRoot
@@ -16,8 +16,109 @@ $sourceLoader = Join-Path $sourceRoot 'sketchup_mcp_port_bridge.rb'
 $resolvedProjectRoot = [System.IO.Path]::GetFullPath($projectRoot)
 $projectPrefix = $resolvedProjectRoot.TrimEnd([char[]]@('\', '/')) + [System.IO.Path]::DirectorySeparatorChar
 
+function Add-SketchUpPluginCandidate {
+    param(
+        [Parameter(Mandatory = $true)][AllowEmptyCollection()][System.Collections.Generic.List[object]]$Candidates,
+        [Parameter(Mandatory = $true)][hashtable]$Seen,
+        [Parameter(Mandatory = $true)][string]$VersionName,
+        [Parameter(Mandatory = $true)][string]$Root
+    )
+
+    if ($VersionName -notmatch '^SketchUp\s+(\d{4})$') {
+        return
+    }
+    $resolvedRoot = [System.IO.Path]::GetFullPath($Root)
+    $key = $resolvedRoot.ToLowerInvariant()
+    if ($Seen.ContainsKey($key)) {
+        return
+    }
+    $Seen[$key] = $true
+    [void]$Candidates.Add([PSCustomObject]@{
+        Version = [int]$Matches[1]
+        VersionName = $VersionName
+        Root = $resolvedRoot
+        Exists = (Test-Path -LiteralPath $resolvedRoot -PathType Container)
+    })
+}
+
+function Get-SketchUpPluginCandidates {
+    $candidates = [System.Collections.Generic.List[object]]::new()
+    $seen = @{}
+    $profileRoots = @()
+    if ($env:APPDATA) {
+        $profileRoots += Join-Path $env:APPDATA 'SketchUp'
+    }
+    if ($env:LOCALAPPDATA) {
+        $profileRoots += Join-Path $env:LOCALAPPDATA 'SketchUp'
+    }
+
+    # First use the folders SketchUp has already created for this Windows user.
+    foreach ($profileRoot in ($profileRoots | Select-Object -Unique)) {
+        if (-not (Test-Path -LiteralPath $profileRoot -PathType Container)) {
+            continue
+        }
+        Get-ChildItem -LiteralPath $profileRoot -Directory -ErrorAction SilentlyContinue |
+            ForEach-Object {
+                $plugins = Join-Path $_.FullName 'SketchUp\Plugins'
+                Add-SketchUpPluginCandidate -Candidates $candidates -Seen $seen -VersionName $_.Name -Root $plugins
+            }
+    }
+
+    # A freshly installed SketchUp might not have created its Plugins folder
+    # yet. Registry entries identify its version so the normal per-user folder
+    # can be created without relying on the SketchUp executable's location.
+    $registryRoots = @(
+        'HKCU:\Software\SketchUp',
+        'HKLM:\Software\SketchUp',
+        'HKLM:\Software\WOW6432Node\SketchUp'
+    )
+    foreach ($registryRoot in $registryRoots) {
+        if (-not (Test-Path -LiteralPath $registryRoot)) {
+            continue
+        }
+        Get-ChildItem -LiteralPath $registryRoot -ErrorAction SilentlyContinue |
+            ForEach-Object {
+                foreach ($profileRoot in ($profileRoots | Select-Object -Unique)) {
+                    $plugins = Join-Path (Join-Path $_.PSChildName 'SketchUp') 'Plugins'
+                    $plugins = Join-Path $profileRoot $plugins
+                    Add-SketchUpPluginCandidate -Candidates $candidates -Seen $seen -VersionName $_.PSChildName -Root $plugins
+                }
+            }
+    }
+
+    return $candidates
+}
+
+function Resolve-SketchUpPluginRoot {
+    if (-not [string]::IsNullOrWhiteSpace($PluginsRoot)) {
+        return [System.IO.Path]::GetFullPath($PluginsRoot)
+    }
+
+    $candidates = @(Get-SketchUpPluginCandidates)
+    if (-not [string]::IsNullOrWhiteSpace($SketchUpVersion)) {
+        $requestedVersion = ($SketchUpVersion -replace '^SketchUp\s+', '').Trim()
+        $candidates = @($candidates | Where-Object { $_.VersionName -eq "SketchUp $requestedVersion" })
+    }
+    if ($candidates.Count -eq 0) {
+        $versionHint = if ([string]::IsNullOrWhiteSpace($SketchUpVersion)) { 'any supported version' } else { "SketchUp $SketchUpVersion" }
+        throw "Could not find a SketchUp Plugins folder for $versionHint. Use -SketchUpVersion 2026 or pass the exact folder with -PluginsRoot. Expected pattern: %APPDATA%\SketchUp\SketchUp <year>\SketchUp\Plugins"
+    }
+
+    # Use the newest installed SketchUp. Its Plugins folder can be created when
+    # SketchUp has not populated it yet.
+    $selected = $candidates |
+        Sort-Object @{Expression = 'Version'; Descending = $true}, @{Expression = { if ($_.Exists) { 1 } else { 0 } }; Descending = $true} |
+        Select-Object -First 1
+    $detectedVersionCount = @($candidates | Select-Object -ExpandProperty Version -Unique).Count
+    if ($detectedVersionCount -gt 1 -and [string]::IsNullOrWhiteSpace($SketchUpVersion)) {
+        Write-Warning "Multiple SketchUp versions were found. Using $($selected.VersionName). Use -SketchUpVersion <year> to select another version."
+    }
+    Write-Host "Using SketchUp plugin folder: $($selected.Root)"
+    return [System.IO.Path]::GetFullPath($selected.Root)
+}
+
 if ([string]::IsNullOrWhiteSpace($PluginsRoot)) {
-    $PluginsRoot = Join-Path $env:APPDATA "SketchUp\SketchUp $SketchUpVersion\SketchUp\Plugins"
+    $PluginsRoot = Resolve-SketchUpPluginRoot
 }
 if ([string]::IsNullOrWhiteSpace($BackupRoot)) {
     $BackupRoot = Join-Path $projectRoot 'plugin-backups'
@@ -30,11 +131,16 @@ if ($resolvedBackupRoot -ne $resolvedProjectRoot -and -not $resolvedBackupRoot.S
 if (-not (Test-Path -LiteralPath $sourceExtension -PathType Container) -or -not (Test-Path -LiteralPath $sourceLoader -PathType Leaf)) {
     throw "Plugin source is missing: $sourceRoot"
 }
-if (-not (Test-Path -LiteralPath $PluginsRoot -PathType Container)) {
-    throw "SketchUp plugin folder is missing: $PluginsRoot"
+if (Test-Path -LiteralPath $PluginsRoot -PathType Leaf) {
+    throw "The requested SketchUp plugin path is a file, not a folder: $PluginsRoot"
 }
 if (Get-Process -Name SketchUp -ErrorAction SilentlyContinue) {
     throw 'SketchUp is running. Save work and close SketchUp before installing or updating this plugin.'
+}
+if (-not (Test-Path -LiteralPath $PluginsRoot -PathType Container)) {
+    if ($PSCmdlet.ShouldProcess($PluginsRoot, 'Create SketchUp plugin folder')) {
+        New-Item -ItemType Directory -Path $PluginsRoot -Force | Out-Null
+    }
 }
 
 $resolvedPluginsRoot = [System.IO.Path]::GetFullPath($PluginsRoot)
@@ -163,6 +269,9 @@ if ($pluginExists -and $Update) {
             $stagePayload = New-StagedPluginPayload -StageRoot $stageRoot
             if (Test-Path -LiteralPath $backupDestination) {
                 throw "Plugin backup folder already exists: $backupDestination"
+            }
+            if (-not (Test-Path -LiteralPath $resolvedBackupRoot -PathType Container)) {
+                New-Item -ItemType Directory -Path $resolvedBackupRoot -Force | Out-Null
             }
             New-Item -ItemType Directory -Path $backupDestination | Out-Null
             if ($extensionExists) {

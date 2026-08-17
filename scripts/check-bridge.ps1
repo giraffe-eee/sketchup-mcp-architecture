@@ -7,7 +7,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$projectRoot = Split-Path -Parent $PSScriptRoot
+$projectRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $venvPython = Join-Path $projectRoot '.venv\Scripts\python.exe'
 if (-not (Test-Path -LiteralPath $venvPython -PathType Leaf)) {
     throw 'MCP Python environment is missing. Run .\scripts\bootstrap.ps1 first.'
@@ -24,7 +24,12 @@ import sketchup_mcp_server as server
 print(json.dumps(server.bridge_status(), ensure_ascii=False, indent=2))
 '@
 
-& $venvPython -c $checkCommand
+Push-Location -LiteralPath $projectRoot
+try {
+    & $venvPython -c $checkCommand
+} finally {
+    Pop-Location
+}
 if ($LASTEXITCODE -ne 0) {
     throw 'SketchUp bridge verification failed. Confirm SketchUp is open and the extension is enabled.'
 }

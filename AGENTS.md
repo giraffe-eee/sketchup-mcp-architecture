@@ -30,8 +30,12 @@ Ruby 扩展在 SketchUp 内实际执行建模。Python 不是 SketchUp 插件，
 - SketchUp 2026（已验证）
 - Python 3.12（推荐；Python 3.10 或更高版本为最低要求）
 
+`mcp-server/requirements.txt` 固定 MCP 服务运行时版本，避免新电脑因依赖自动升级而
+得到不同的工具接口。
+
 文件队列位于项目目录的 `.runtime\file-queue`。安装脚本会把当前用户的
-实际项目路径写入 SketchUp 插件，因此项目可位于任意目录。
+实际项目路径写入 SketchUp 插件，因此项目可位于任意目录。Codex 配置使用相对
+工作区路径，不需要把项目路径写死在配置文件中。
 
 ## 核心文件
 
@@ -42,6 +46,7 @@ Ruby 扩展在 SketchUp 内实际执行建模。Python 不是 SketchUp 插件，
 | `mcp-server/sketchup_mcp_server.py` | 面向 Codex 的 MCP 服务。 |
 | `mcp-server/requirements.txt` | Python 依赖。 |
 | `.codex/config.toml` | 本项目的 Codex MCP 注册配置。 |
+| `scripts/install.ps1` | 推荐的一键安装与更新入口。 |
 | `scripts/bootstrap.ps1` | 可选的 Python 环境安装脚本。 |
 | `scripts/install-plugin.ps1` | 可选的 SketchUp 插件安装/更新脚本。 |
 
@@ -54,21 +59,37 @@ Ruby 扩展在 SketchUp 内实际执行建模。Python 不是 SketchUp 插件，
 3. 运行：
 
    ```powershell
-   .\scripts\bootstrap.ps1
-   .\scripts\install-plugin.ps1
+   .\scripts\install.ps1
    ```
 
    如果已经安装过插件，请使用：
 
    ```powershell
-   .\scripts\install-plugin.ps1 -Update
+   .\scripts\install.ps1 -Update
    ```
 
 4. 重启 SketchUp，并在 Codex 中打开本仓库。Codex 会根据
    `.codex/config.toml` 启动 `sketchup_architecture` MCP 服务。
-5. 调用 `bridge_info`。正常桥接会报告协议版本 `1.0`，支持动作中包含
+5. 调用 `bridge_status`。正常桥接会报告协议版本 `1.0`，支持动作中包含
    `apply_batch`。
 6. 也可运行 `.\scripts\check-bridge.ps1`，检查插件、文件队列与协议是否正常连接。
+
+脚本会自动发现 Python 3.10+ 和用户配置目录、Windows 注册表中的 SketchUp
+版本。发现多个 SketchUp 版本时默认选择最新版本；可使用以下参数明确选择非默认
+位置：
+
+```powershell
+.\scripts\install.ps1 -PythonPath 'E:\Python312\python.exe'
+.\scripts\install.ps1 -SketchUpVersion 2025
+.\scripts\install.ps1 -PluginsRoot 'D:\custom\SketchUp\Plugins'
+```
+
+安装器不需要发现 `codex.exe`：受信任的项目工作区会加载项目内的
+`.codex/config.toml`。自定义的 SketchUp 插件目录无法根据 SketchUp 应用程序
+位置可靠推断，遇到这类设置时必须传入 `-PluginsRoot`。
+
+第一次安装后，建议使用 [FIRST_SESSION_PROMPTS.md](FIRST_SESSION_PROMPTS.md)
+中的首次安装提示词和建模提示词。
 
 ## 手动安装
 
@@ -76,7 +97,7 @@ Ruby 扩展在 SketchUp 内实际执行建模。Python 不是 SketchUp 插件，
 
 ### 1. 安装 SketchUp 扩展文件
 
-关闭 SketchUp，找到其 Plugins 目录。SketchUp 2026 在 Windows 的默认路径为：
+关闭 SketchUp，找到其 Plugins 目录。常见路径模式为（版本号可能不同）：
 
 ```text
 %APPDATA%\SketchUp\SketchUp 2026\SketchUp\Plugins
@@ -116,7 +137,8 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r .\mcp-server\requirements.txt
 ```
 
-若 `python` 未加入 `PATH`，请替换为 `python.exe` 完整路径，例如：
+若自动发现不到 Python，使用 `bootstrap.ps1 -PythonPath`，或替换为
+`python.exe` 完整路径，例如：
 
 ```text
 C:\Users\<username>\AppData\Local\Programs\Python\Python3xx\python.exe
@@ -188,6 +210,8 @@ SKETCHUP_MCP_ENABLE_FILE_QUEUE = "true"
 | `bridge_info` 超时 | 运行 `.\scripts\check-bridge.ps1`；确认 SketchUp 正在运行，复制 Ruby 文件后已重启，并确认扩展已启用。 |
 | Codex 无法启动 MCP 服务 | 运行 Python 安装命令，检查 `.codex/config.toml` 的 `command`、`cwd` 和运行目录路径。 |
 | 安装脚本拒绝运行 | 完全关闭 SketchUp；安装脚本不会替换正在使用的插件文件。 |
+| 找不到 Python | 确认 Python 3.10+ 已安装；使用 `bootstrap.ps1 -PythonPath` 指定非标准解释器路径。 |
+| 找不到 SketchUp Plugins | 使用 `install-plugin.ps1 -SketchUpVersion 2025`，或用 `-PluginsRoot` 指定实际 Plugins 文件夹。 |
 | SketchUp 未显示插件 | 重新检查两处复制目标，确认复制的是完整的 `codex_sketchup_mcp` 文件夹。 |
 | 现有模型意外变化 | 立即停止，调用 `list_entities`，仅在用户明确批准替换后继续。 |
 
